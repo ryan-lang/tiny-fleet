@@ -19,7 +19,23 @@ This compiles a static Go binary and packages `tiny-fleet_0.1.0_amd64.deb`.
 
 ## 2. Deploy Agents to Your Machines
 
-Copy the `.deb` to each machine on your local network (e.g. via `scp`):
+### Option A: One-Line Installer (Recommended)
+
+Run on each Debian or Ubuntu server. This fetches the release `.deb`, installs all dependencies via `apt`, starts the agent service, and cleans up after itself with no leftover files:
+
+```sh
+curl -sSL https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash
+```
+
+Or using `wget`:
+
+```sh
+wget -qO- https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash
+```
+
+### Option B: Copy `.deb` via SCP
+
+Copy the `.deb` to each machine on your local network:
 
 ```sh
 scp tiny-fleet_0.1.0_amd64.deb user@target-node:/tmp/

@@ -39,17 +39,26 @@ No database, no central server, no static host lists. If a machine powers on, it
 
 ## Installation
 
-### Debian / Ubuntu (`.deb`)
+### One-Line Install (Debian / Ubuntu)
 
-Building the Debian package:
+Install on any Debian or Ubuntu node with a single command. It downloads the latest release `.deb`, installs dependencies via `apt`, starts `fleet.service`, and deletes the downloaded archive automatically:
+
+```sh
+curl -sSL https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash
+```
+
+Or using `wget`:
+
+```sh
+wget -qO- https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash
+```
+
+### Local Build & Install
+
+Building the Debian package locally:
 
 ```sh
 make deb
-```
-
-Install using `apt`, which will automatically resolve and install required dependencies (`util-linux`, `pciutils`, `systemd`):
-
-```sh
 sudo apt install ./tiny-fleet_0.1.0_amd64.deb
 ```
 
