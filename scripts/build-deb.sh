@@ -9,7 +9,7 @@ STAGE_DIR="/tmp/${PKG_NAME}"
 
 echo "==> Building fleet binary for ${ARCH}..."
 cd "${ROOT_DIR}"
-CGO_ENABLED=0 GOOS=linux GOARCH="${ARCH}" go build -ldflags="-s -w -X main.Version=${VERSION}" -o /tmp/fleet-bin .
+CGO_ENABLED=0 GOOS=linux GOARCH="${ARCH}" go build -ldflags="-s -w -X main.Version=${VERSION}" -o fleet .
 
 echo "==> Preparing Debian package directory structure at ${STAGE_DIR}..."
 rm -rf "${STAGE_DIR}"
@@ -18,7 +18,7 @@ mkdir -p "${STAGE_DIR}/usr/bin"
 mkdir -p "${STAGE_DIR}/lib/systemd/system"
 
 # Binary
-cp /tmp/fleet-bin "${STAGE_DIR}/usr/bin/fleet"
+cp fleet "${STAGE_DIR}/usr/bin/fleet"
 chmod 0755 "${STAGE_DIR}/usr/bin/fleet"
 
 # Systemd service
@@ -89,5 +89,5 @@ chmod 0755 "${STAGE_DIR}/DEBIAN/postrm"
 echo "==> Building .deb package..."
 dpkg-deb --build --root-owner-group "${STAGE_DIR}" "${ROOT_DIR}/${PKG_NAME}.deb"
 
-rm -rf "${STAGE_DIR}" /tmp/fleet-bin
+rm -rf "${STAGE_DIR}"
 echo "==> Successfully created ${ROOT_DIR}/${PKG_NAME}.deb"
