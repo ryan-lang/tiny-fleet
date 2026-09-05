@@ -1,27 +1,14 @@
 # Tiny Fleet — Quick Start Guide
 
-Get your LAN inventory up and running in under two minutes across your Debian and Ubuntu servers.
+Get your LAN inventory up and running in under two minutes across your Linux servers and macOS machines.
 
 ---
 
-## 1. Build the Package
-
-Run `make deb` on your build or management machine:
-
-```sh
-cd /path/to/tiny-fleet
-make deb
-```
-
-This compiles a static Go binary and packages `tiny-fleet_0.1.1_amd64.deb`.
-
----
-
-## 2. Deploy Agents to Your Machines
+## 1. Quick Install
 
 ### Option A: One-Line Installer (Recommended)
 
-Run on each Debian or Ubuntu server. This fetches the release `.deb`, installs all dependencies via `apt`, starts the agent service, and cleans up after itself with no leftover files:
+Run on any machine on your network (Linux Debian/Ubuntu, or macOS Apple Silicon / Intel):
 
 ```sh
 curl -sSL https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash
@@ -33,46 +20,68 @@ Or using `wget`:
 wget -qO- https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash
 ```
 
-### Option B: Copy `.deb` via SCP
+- **Linux (Debian/Ubuntu)**: Installs the `.deb` package via `apt` and automatically starts `fleet.service`.
+- **macOS (Apple Silicon & Intel)**: Installs `fleet` to `/usr/local/bin/fleet`. To also enable the background agent at boot:
+  ```sh
+  curl -sSL https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh | bash -s -- --service
+  ```
 
-Copy the `.deb` to each machine on your local network:
+---
 
-```sh
-scp tiny-fleet_0.1.1_amd64.deb user@target-node:/tmp/
-```
+### Option B: Build From Source
 
-On each machine, install with `apt`:
-
-```sh
-sudo apt update
-sudo apt install /tmp/tiny-fleet_0.1.1_amd64.deb
-```
-
-> **Why `apt` instead of `dpkg -i`?**  
-> `apt` automatically installs declared hardware dependencies (`util-linux`, `pciutils`, `systemd`) if any are missing.
-
-The package immediately enables and starts the systemd service:
+Clone the repo and run:
 
 ```sh
-systemctl status fleet.service
+# Build binary for current platform
+make build
+
+# Or package both macOS Intel and Apple Silicon tarballs
+make darwin
+
+# Or package Debian .deb
+make deb
 ```
 
 ---
 
-## 3. Alternative: Running Without Installation
+## 2. Managing the Background Agent
 
-You can also run the agent directly on any machine without installing the package:
+### On Linux (systemd)
 
 ```sh
-# Start agent in background or terminal
-./fleet agent &
+sudo systemctl status fleet.service
+sudo systemctl restart fleet.service
+sudo journalctl -u fleet.service -f
+```
+
+### On macOS (launchd)
+
+```sh
+# Start background service
+sudo cp io.github.ryan-lang.tiny-fleet.plist /Library/LaunchDaemons/
+sudo launchctl bootstrap system /Library/LaunchDaemons/io.github.ryan-lang.tiny-fleet.plist
+
+# Inspect logs
+tail -f /var/log/tiny-fleet.log
+
+# Stop service
+sudo launchctl bootout system /Library/LaunchDaemons/io.github.ryan-lang.tiny-fleet.plist
+```
+
+### Running in Foreground (Any Machine)
+
+You can always run the agent directly in a terminal without a background daemon:
+
+```sh
+fleet agent
 ```
 
 ---
 
-## 4. Discover Your Fleet
+## 3. Discover Your Fleet
 
-On any machine on the same LAN (workstation, laptop, or server), run:
+On any machine on the same LAN (Mac or Linux), run:
 
 ### Compact Overview
 
@@ -85,6 +94,7 @@ Output:
 ```
 HOST          IP             OS                 VIRT   CPU                 RAM    GPU
 workstation   192.168.4.10   Ubuntu 26.04 LTS   none   Ryzen 9 9950X3D2   128G   RTX 4090
+macbook-pro   192.168.4.15   macOS 15.0         none   Apple M3 Max        64G    Apple M3 Max
 pve1          192.168.4.20   Proxmox VE 9       none   Xeon E-2288G       64G    -
 build01       192.168.4.31   Ubuntu 24.04 LTS   kvm    8 vCPU             32G    -
 postgres      192.168.4.32   Debian 13           lxc    4 vCPU             16G    -
@@ -93,26 +103,26 @@ postgres      192.168.4.32   Debian 13           lxc    4 vCPU             16G  
 ### Detailed Host Profile
 
 ```sh
-fleet info build01
+fleet info macbook-pro
 ```
 
 Output:
 
 ```
-build01
-  Address:     192.168.4.31
-  OS:          Ubuntu 24.04.4 LTS
-  Kernel:      6.8.0-137-generic
-  Virtualized: kvm
-  CPU:         AMD Ryzen 9 7950X
-  CPUs:        8
-  RAM:         32 GiB
+macbook-pro
+  Address:     192.168.4.15
+  OS:          macOS 15.0
+  Kernel:      24.0.0
+  Virtualized: no
+  CPU:         Apple M3 Max
+  CPUs:        16
+  RAM:         64 GiB
 
   GPUs:
-    -
+    Apple M3 Max
 
   Storage:
-    nvme0n1    Samsung SSD 980 PRO 2TB    1.82 TiB
+    disk0   APPLE SSD AP1024Z   931 GiB
 ```
 
 ### Scripting with JSON
@@ -121,25 +131,22 @@ build01
 # List all discovered hosts
 fleet --json | jq -r '.[].hostname'
 
-# Extract IP and RAM for all nodes
-fleet --json | jq '.[] | {host: .hostname, ip: .ip, ram_gb: (.memory_bytes / 1073741824)}'
+# Extract IP, OS, and RAM for all nodes
+fleet --json | jq '.[] | {host: .hostname, os: .os, ip: .ip, ram_gb: (.memory_bytes / 1073741824)}'
 
 # Inspect raw facts for one machine
-fleet info build01 --json
+fleet info macbook-pro --json
 ```
 
 ---
 
-## 5. Network Checklist
+## 4. Network Checklist
 
 Tiny Fleet requires no central database or registration token. Ensure the following network traffic is permitted on your LAN:
 
 - **UDP Port 5353**: Multicast DNS (`224.0.0.251` / `ff02::fb`)
 - **TCP Port 9753**: HTTP facts endpoint (`/v1/info`)
 
-If a machine has a local firewall (e.g. UFW):
-
-```sh
-sudo ufw allow 5353/udp
-sudo ufw allow 9753/tcp
-```
+Firewall configuration if needed:
+- **Linux (UFW)**: `sudo ufw allow 5353/udp && sudo ufw allow 9753/tcp`
+- **macOS**: Allow incoming connections when prompted or via System Settings > Network > Firewall.

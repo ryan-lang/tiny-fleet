@@ -89,27 +89,7 @@ func (a *Agent) Run(ctx context.Context) error {
 		currentInfo.Hostname, currentInfo.OS, currentInfo.CPU, currentInfo.Virtualization)
 
 	// 2. Announce via mDNS
-	txtRecords := []string{
-		"v=1",
-		fmt.Sprintf("os=%s", a.collector.GetOSID()),
-		fmt.Sprintf("virt=%s", a.collector.GetVirt()),
-	}
-
-	mdnsServer, err := zeroconf.Register(
-		currentInfo.Hostname,
-		"_fleet._tcp",
-		"local.",
-		a.port,
-		txtRecords,
-		nil,
-	)
-	if err != nil {
-		log.Printf("[fleet agent] Warning: mDNS registration error: %v", err)
-	} else {
-		a.mdnsServer = mdnsServer
-		log.Printf("[fleet agent] Registered mDNS service _fleet._tcp.local as '%s' with TXT %v",
-			currentInfo.Hostname, txtRecords)
-	}
+	a.registerMDNS(currentInfo.Hostname)
 
 	// 3. Dynamic facts refresh tickers
 	ticker60s := time.NewTicker(60 * time.Second)
@@ -133,16 +113,63 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 }
 
+func (a *Agent) registerMDNS(hostname string) {
+	txtRecords := []string{
+		"v=1",
+		fmt.Sprintf("os=%s", a.collector.GetOSID()),
+		fmt.Sprintf("virt=%s", a.collector.GetVirt()),
+	}
+
+	mdnsServer, err := zeroconf.Register(
+		hostname,
+		"_fleet._tcp",
+		"local.",
+		a.port,
+		txtRecords,
+		nil,
+	)
+	if err != nil {
+		log.Printf("[fleet agent] Warning: mDNS registration error: %v", err)
+		a.mdnsServer = nil
+	} else {
+		a.mdnsServer = mdnsServer
+		log.Printf("[fleet agent] Registered mDNS service _fleet._tcp.local as '%s' with TXT %v",
+			hostname, txtRecords)
+	}
+}
+
 func (a *Agent) refreshDynamic() {
+	// Collect dynamic facts outside the lock to avoid blocking HTTP requests
+	updated := a.GetInfo()
+	a.collector.UpdateDynamic(updated)
+
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.collector.UpdateDynamic(a.info)
+	a.info.MemoryBytes = updated.MemoryBytes
+	a.info.CPULimit = updated.CPULimit
+	a.info.LogicalCPUs = updated.LogicalCPUs
+	oldIP := a.info.IP
+	a.info.IP = updated.IP
+	a.mu.Unlock()
+
+	// If mDNS registration failed initially (e.g. boot before network ready), retry
+	if a.mdnsServer == nil {
+		a.registerMDNS(updated.Hostname)
+	} else if oldIP != "" && updated.IP != "" && oldIP != updated.IP {
+		log.Printf("[fleet agent] Network IP changed (%s -> %s), re-registering mDNS...", oldIP, updated.IP)
+		a.mdnsServer.Shutdown()
+		a.mdnsServer = nil
+		a.registerMDNS(updated.Hostname)
+	}
 }
 
 func (a *Agent) refreshDisks() {
+	// Collect disks outside lock to avoid blocking HTTP requests
+	updated := a.GetInfo()
+	a.collector.UpdateDisks(updated)
+
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.collector.UpdateDisks(a.info)
+	a.info.Disks = updated.Disks
+	a.mu.Unlock()
 }
 
 func (a *Agent) handleV1Info(w http.ResponseWriter, r *http.Request) {
