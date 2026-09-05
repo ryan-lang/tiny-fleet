@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Extract version tag
+        id: tag
+        run: |
+          RAW_TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${RAW_TAG#v}"
+          echo "tag=${RAW_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Debian package
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}" ./scripts/build-deb.sh
+
+      - name: Build standalone tarball
+        run: |
+          mkdir -p dist
+          tar -czvf "dist/tiny-fleet_${{ steps.tag.outputs.version }}_linux_amd64.tar.gz" fleet fleet.service README.md QUICKSTART.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Tiny Fleet ${{ steps.tag.outputs.tag }}
+          files: |
+            tiny-fleet_${{ steps.tag.outputs.version }}_amd64.deb
+            dist/tiny-fleet_${{ steps.tag.outputs.version }}_linux_amd64.tar.gz
+          generate_release_notes: true

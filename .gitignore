@@ -1,0 +1,16 @@
+# Binaries
+fleet
+*.exe
+
+# Debian packages and archives
+*.deb
+*.tar.gz
+
+# Build outputs
+/dist/
+/build/
+
+# IDE / editor artifacts
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,12 @@
+[Unit]
+Description=Fleet discovery agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/fleet agent
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
