@@ -53,7 +53,7 @@ if [ "${VERSION}" = "latest" ]; then
     if [ -n "${LATEST_TAG}" ]; then
         VERSION="${LATEST_TAG#v}"
     else
-        VERSION="0.1.0"
+        VERSION="0.1.1"
     fi
 fi
 

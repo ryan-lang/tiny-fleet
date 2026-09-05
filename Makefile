@@ -1,6 +1,6 @@
 .PHONY: all build test test-race deb clean
 
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
 ARCH ?= amd64
 
 all: build

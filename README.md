@@ -59,7 +59,7 @@ Building the Debian package locally:
 
 ```sh
 make deb
-sudo apt install ./tiny-fleet_0.1.0_amd64.deb
+sudo apt install ./tiny-fleet_0.1.1_amd64.deb
 ```
 
 The package automatically:

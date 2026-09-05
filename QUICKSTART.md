@@ -13,7 +13,7 @@ cd /path/to/tiny-fleet
 make deb
 ```
 
-This compiles a static Go binary and packages `tiny-fleet_0.1.0_amd64.deb`.
+This compiles a static Go binary and packages `tiny-fleet_0.1.1_amd64.deb`.
 
 ---
 
@@ -38,14 +38,14 @@ wget -qO- https://raw.githubusercontent.com/ryan-lang/tiny-fleet/main/install.sh
 Copy the `.deb` to each machine on your local network:
 
 ```sh
-scp tiny-fleet_0.1.0_amd64.deb user@target-node:/tmp/
+scp tiny-fleet_0.1.1_amd64.deb user@target-node:/tmp/
 ```
 
 On each machine, install with `apt`:
 
 ```sh
 sudo apt update
-sudo apt install /tmp/tiny-fleet_0.1.0_amd64.deb
+sudo apt install /tmp/tiny-fleet_0.1.1_amd64.deb
 ```
 
 > **Why `apt` instead of `dpkg -i`?**  
